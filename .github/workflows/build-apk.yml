@@ -1,0 +1,44 @@
+
+name: Build MPP APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          set -eu
+          ZIP_FILE="$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          test -n "$ZIP_FILE"
+          mkdir -p /tmp/mpp
+          unzip -q "$ZIP_FILE" -d /tmp/mpp
+          PROJECT_DIR="$(find /tmp/mpp -type f -name settings.gradle -printf '%h\n' | head -n 1)"
+          test -n "$PROJECT_DIR"
+          cp -a "$PROJECT_DIR"/. .
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: gradle assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MPP-My-Pulse-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
